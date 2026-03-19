@@ -13,7 +13,6 @@
  *  5. Back-to-Top Button
  *  6. Scroll Reveal Animations
  *  7. Live Search/Filter for products
- *  8. Cart localStorage Persistence
  */
 
 /* =============================================================
@@ -62,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Icons per type
     const TOAST_ICONS = {
         success: 'fa-solid fa-circle-check',
-        error:   'fa-solid fa-circle-xmark',
-        info:    'fa-solid fa-circle-info',
+        error: 'fa-solid fa-circle-xmark',
+        info: 'fa-solid fa-circle-info',
         warning: 'fa-solid fa-triangle-exclamation'
     };
 
@@ -73,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {'success'|'error'|'info'|'warning'} type
      * @param {number} duration - ms before auto-dismiss (default 3000)
      */
-    window.showToast = function(message, type = 'success', duration = 3000) {
+    window.showToast = function (message, type = 'success', duration = 3000) {
         const container = document.getElementById('toast-container');
         if (!container) return;
 
@@ -104,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ---------------------------------------------------------- */
     const cartBadge = document.getElementById('cart-count');
 
-    window.updateCartBadge = function() {
+    window.updateCartBadge = function () {
         // `cart` is defined globally in script.js
         if (typeof cart === 'undefined' || !cartBadge) return;
         const total = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -123,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // We save original from script.js, wrap it, and reassign globally
     const _originalAddToCart = window.addToCart;
     if (typeof _originalAddToCart === 'function') {
-        window.addToCart = function(productId, productName, productPrice, productsrc) {
+        window.addToCart = function (productId, productName, productPrice, productsrc) {
             _originalAddToCart(productId, productName, productPrice, productsrc);
             updateCartBadge();
             showToast(`🛒 <strong>${productName}</strong> added to cart!`, 'success');
@@ -133,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ── Patch removeFromCart to also call badge updater & toast (SAFE WRAP) ── */
     const _originalRemoveFromCart = window.removeFromCart;
     if (typeof _originalRemoveFromCart === 'function') {
-        window.removeFromCart = function(productId) {
+        window.removeFromCart = function (productId) {
             // Find name before removal
             const item = (typeof cart !== 'undefined') ? cart.find(i => i.id === productId) : null;
             _originalRemoveFromCart(productId);
@@ -147,12 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ---------------------------------------------------------- */
     const _originalUpdateCartDisplay = window.updateCartDisplay;
     if (typeof _originalUpdateCartDisplay === 'function') {
-        window.updateCartDisplay = function() {
+        window.updateCartDisplay = function () {
             _originalUpdateCartDisplay();
             updateEmptyCartState();
             updateCartBadge();
-            saveCartToStorage();
-            
+
             // Phase 2: Update structural summary instead of .total
             if (typeof cart !== 'undefined') {
                 const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -161,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const summaryContainer = document.getElementById('order-summary-container');
                 const emptyMsg = document.getElementById('empty-cart-msg');
                 const btn = document.querySelector('.shopping-cart .btn');
-                
+
                 if (cart.length > 0) {
                     if (subtotalEl) subtotalEl.textContent = `$${totalAmount.toFixed(2)}/-`;
                     if (totalEl) totalEl.textContent = `$${totalAmount.toFixed(2)}/-`;
@@ -185,35 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ----------------------------------------------------------
-       5. CART LOCALSTORAGE PERSISTENCE
-    ---------------------------------------------------------- */
-    function saveCartToStorage() {
-        if (typeof cart !== 'undefined') {
-            try {
-                localStorage.setItem('gc-cart', JSON.stringify(cart));
-            } catch(e) { /* ignore quota errors */ }
-        }
-    }
-
-    function restoreCartFromStorage() {
-        try {
-            const saved = localStorage.getItem('gc-cart');
-            if (saved && typeof cart !== 'undefined' && typeof updateCartDisplay === 'function') {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    parsed.forEach(item => {
-                        cart.push(item);
-                    });
-                    updateCartDisplay();
-                }
-            }
-        } catch(e) { /* ignore parse errors */ }
-    }
-
-    // Run restore after a tick so script.js has initialized cart
-    setTimeout(restoreCartFromStorage, 0);
-
-    /* ----------------------------------------------------------
        6. WISHLIST FEATURE (Completely new; does not touch cart)
     ---------------------------------------------------------- */
     let wishlist = [];
@@ -222,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const saved = localStorage.getItem('gc-wishlist');
         if (saved) wishlist = JSON.parse(saved) || [];
-    } catch(e) { wishlist = []; }
+    } catch (e) { wishlist = []; }
 
     const wishlistBtn = document.getElementById('wishlist-btn');
     const wishlistPanel = document.getElementById('wishlist-panel');
@@ -305,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveWishlist() {
-        try { localStorage.setItem('gc-wishlist', JSON.stringify(wishlist)); } catch(e) {}
+        try { localStorage.setItem('gc-wishlist', JSON.stringify(wishlist)); } catch (e) { }
     }
 
     function renderWishlist() {
@@ -344,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pid = btn.getAttribute('data-id');
                 const item = wishlist.find(i => i.id === pid);
                 if (item && typeof addToCart === 'function') {
-                    const price = parseFloat(item.price.replace('$','').replace('/-',''));
+                    const price = parseFloat(item.price.replace('$', '').replace('/-', ''));
                     addToCart(pid, item.name, price, item.src);
                 }
             });
@@ -418,15 +387,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const noResults = document.getElementById('no-results');
     const searchSuggestions = document.getElementById('search-suggestions');
     let activeFilter = 'all';
-    
+
     // NEW: Price slider state
     let maxPrice = 250;
     const priceSlider = document.getElementById('price-slider');
     const priceDisplay = document.getElementById('price-display');
-    
+
     // NEW: Search history state
     let recentSearches = JSON.parse(localStorage.getItem('gc-recent-searches')) || [];
-    
+
     function saveSearchQuery(query) {
         if (!query || query.length < 2) return;
         recentSearches = recentSearches.filter(q => q !== query);
@@ -446,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Extract rating dynamically or mock it
         const rating = (starsText.match(/fa-solid fa-star/g) || []).length + ((starsText.match(/fa-star-half-stroke/g) || []).length * 0.5) || 5;
         const numPrice = parseFloat(price.replace('$', '')) || 0;
-        
+
         // Save to element for sorting later
         slide.setAttribute('data-price', numPrice);
         slide.setAttribute('data-rating', rating);
@@ -460,27 +429,27 @@ document.addEventListener('DOMContentLoaded', () => {
             filterProducts(query, activeFilter);
             showSuggestions(query);
         });
-        
+
         // Hide suggestions on blur (with delay to allow click)
         searchBox.addEventListener('blur', () => {
             setTimeout(() => {
                 if (searchSuggestions) searchSuggestions.classList.remove('active');
             }, 200);
         });
-        
+
         searchBox.addEventListener('focus', () => {
             if (searchBox.value.trim().length > 0) {
                 showSuggestions(searchBox.value.trim().toLowerCase());
             }
         });
     }
-    
+
     function showSuggestions(query) {
         if (!searchSuggestions) return;
         if (query.length === 0) {
             if (recentSearches.length > 0) {
-                searchSuggestions.innerHTML = `<div style="padding: 1.2rem 2rem 0.5rem; font-size: 1.2rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Recent Searches</div>` + 
-                recentSearches.map(q => `
+                searchSuggestions.innerHTML = `<div style="padding: 1.2rem 2rem 0.5rem; font-size: 1.2rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Recent Searches</div>` +
+                    recentSearches.map(q => `
                     <div class="suggestion-item history-item" data-query="${q}">
                         <i class="fa-solid fa-clock"></i>
                         <div class="suggestion-info">
@@ -489,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `).join('');
                 searchSuggestions.classList.add('active');
-                
+
                 searchSuggestions.querySelectorAll('.history-item').forEach(item => {
                     item.addEventListener('click', () => {
                         searchBox.value = item.getAttribute('data-query');
@@ -501,9 +470,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
-        
+
         const matches = productData.filter(p => p.name.toLowerCase().includes(query)).slice(0, 5); // top 5
-        
+
         if (matches.length > 0) {
             searchSuggestions.innerHTML = matches.map(m => `
                 <div class="suggestion-item" data-id="${m.id}">
@@ -515,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `).join('');
             searchSuggestions.classList.add('active');
-            
+
             // Add click events to suggestions
             searchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
                 item.addEventListener('click', () => {
@@ -554,13 +523,13 @@ document.addEventListener('DOMContentLoaded', () => {
             filterProducts(query, activeFilter);
         });
     });
-    
+
     if (sortSelect) {
         sortSelect.addEventListener('change', (e) => {
             sortProducts(e.target.value);
         });
     }
-    
+
     if (priceSlider) {
         priceSlider.addEventListener('input', (e) => {
             maxPrice = parseInt(e.target.value);
@@ -598,32 +567,31 @@ document.addEventListener('DOMContentLoaded', () => {
             noResults.style.display = visibleCount === 0 ? 'block' : 'none';
         }
     }
-    
+
     function sortProducts(sortType) {
         const wrapper = document.querySelector('.products .swiper-wrapper');
         if (!wrapper) return;
-        
+
         const slides = Array.from(wrapper.querySelectorAll('.swiper-slide.box'));
-        
+
         slides.sort((a, b) => {
             const priceA = parseFloat(a.getAttribute('data-price')) || 0;
             const priceB = parseFloat(b.getAttribute('data-price')) || 0;
             const ratingA = parseFloat(a.getAttribute('data-rating')) || 0;
             const ratingB = parseFloat(b.getAttribute('data-rating')) || 0;
-            
+
             if (sortType === 'price-low') return priceA - priceB;
             if (sortType === 'price-high') return priceB - priceA;
             if (sortType === 'rating') return ratingB - ratingA;
             return 0; // Default order depends on DOM order, which we lost. Ideally we save original order.
         });
-        
+
         // Re-append in new order (flashes slightly but works without framework)
         slides.forEach(slide => wrapper.appendChild(slide));
     }
 
     /* ----------------------------------------------------------
        INITIAL BADGE SYNC
-       In case cart was restored from localStorage
     ---------------------------------------------------------- */
     setTimeout(() => {
         updateCartBadge();
@@ -634,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
        11. QUICK VIEW MODAL & RECENTLY VIEWED
     ---------------------------------------------------------- */
     let recentlyViewedIds = JSON.parse(localStorage.getItem('gc-recently-viewed')) || [];
-    
+
     function renderRecentlyViewed() {
         const container = document.getElementById('recently-viewed-container');
         const section = document.getElementById('recently-viewed-section');
@@ -662,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.insertAdjacentHTML('beforeend', html);
             }
         });
-        
+
         // Re-attach fly events to the newly generated buttons
         container.querySelectorAll('.btn[onclick^="addToCart"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -674,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-    
+
     // Call initial render
     renderRecentlyViewed();
 
@@ -687,24 +655,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const qvBadge = document.getElementById('qv-badge');
     const qvAddBtn = document.getElementById('qv-add-btn');
     const qvWishlistBtn = document.getElementById('qv-wishlist-btn');
-    
+
     document.querySelectorAll('.quick-view-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const pid = btn.getAttribute('data-product-id');
             const product = productData.find(p => p.id === pid);
             if (!product) return;
-            
+
             // Populate Modal
             qvImg.src = product.src;
             qvName.textContent = product.name;
             qvPrice.textContent = `$${product.numPrice}/-`;
             qvBadge.textContent = product.element.querySelector('.product-badge')?.textContent || '🌿 Fresh';
             qvStars.innerHTML = product.element.querySelector('.stars')?.innerHTML || '';
-            
+
             qvAddBtn.setAttribute('data-product-id', pid);
             qvWishlistBtn.setAttribute('data-product-id', pid);
-            
+
             // Update modal wishlist heart state
             if (wishlist.find(i => i.id === pid)) {
                 qvWishlistBtn.classList.add('wishlisted');
@@ -713,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 qvWishlistBtn.classList.remove('wishlisted');
                 qvWishlistBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
             }
-            
+
             // Update recently viewed
             if (!recentlyViewedIds.includes(pid)) {
                 recentlyViewedIds.unshift(pid);
@@ -721,12 +689,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('gc-recently-viewed', JSON.stringify(recentlyViewedIds));
                 renderRecentlyViewed();
             }
-            
+
             // Show modal
             modal.classList.add('active');
         });
     });
-    
+
     if (modalClose) {
         modalClose.addEventListener('click', () => modal.classList.remove('active'));
     }
@@ -735,7 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === modal) modal.classList.remove('active');
         });
     }
-    
+
     // Modal action buttons
     if (qvAddBtn) {
         qvAddBtn.addEventListener('click', () => {
@@ -749,7 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     if (qvWishlistBtn) {
         qvWishlistBtn.addEventListener('click', () => {
             const pid = qvWishlistBtn.getAttribute('data-product-id');
@@ -820,11 +788,11 @@ document.addEventListener('DOMContentLoaded', () => {
         flyingImg.addEventListener('transitionend', () => {
             flyingImg.remove();
         }, { once: true });
-        
+
         // Failsafe cleanup
         setTimeout(() => { if (flyingImg.parentNode) flyingImg.remove(); }, 1000);
     }
-    
+
     /* ----------------------------------------------------------
        13. SKELETON LOADERS
        Removes placeholder classes after page load
